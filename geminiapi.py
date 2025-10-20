@@ -1,7 +1,7 @@
 import json
 
+# Gemini API를 사용하여 문장 성분을 분석하고 결과를 JSON으로 반환합니다.
 def analyze_sentence_with_gemini(sentence, page_no, client):
-    """Gemini API를 사용하여 문장 성분을 분석하고 결과를 JSON으로 반환합니다."""
     prompt = f"""
 Please analyze the ingredients and answer only with the JSON-type string below.
 {{
@@ -36,16 +36,23 @@ If there is no corresponding ingredient, please make the corresponding value nul
 
 Sentence: "{sentence}"
 """
+    prompt = f"""
+{sentence}
+
+The above reads "sentence": "sentence clear."
+Please understand the flow of the sentence, the context of the front and back, and the components, maintain the form, and change it to an appropriate Korean interpretation.
+Please answer in the form of the above list only.
+
+ex) {{'You': 'PRP'}}, {{'see': 'VBP'}}, {{'what you': 'WP'}}, {{'want to see': 'VBP'}} -> {{'You': '너는'}}, {{'see': '보았다'}}, {{'what you': '너가'}}, {{'want to see': '보고 싶어 하는'}}
+"""
+
     try:
         response = client.models.generate_content(
             model="gemini-2.5-flash-lite",
             contents=prompt
         )
         json_text = response.text.strip()
-        if json_text.startswith("```json"):
-            json_text = json_text[7:-3].strip()
-            
-        return json.loads(json_text)
+        return json_text
     except json.JSONDecodeError:
         print(f"❌ Gemini가 반환한 값을 JSON으로 파싱하는 데 실패했습니다: {response.text}")
         return None

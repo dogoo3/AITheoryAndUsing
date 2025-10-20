@@ -4,7 +4,8 @@ from google import genai
 from dotenv import load_dotenv
 
 from geminiapi import analyze_sentence_with_gemini
-from editpdf import extract_sentences_from_page, apply_highlights_to_page
+import editpdf
+# from editpdf import extract_sentences_from_page, apply_highlights_to_page
 from spacy_analyzer import analysis_sentence_ingredients
 
 load_dotenv()
@@ -96,7 +97,7 @@ def main():
         print(f"\n📄 {page_num} 페이지 분석을 시작합니다...")
         current_page = doc[page_num - 1]
         page_highlight_rects = [annot.rect for annot in current_page.annots() if annot.type[1] == 'Highlight']
-        sentences = extract_sentences_from_page(current_page)
+        sentences = editpdf.extract_sentences_from_page(current_page)
         
         if not sentences:
             print("  - 해당 페이지에서 문장을 찾을 수 없습니다.")
@@ -106,12 +107,19 @@ def main():
 
         for sentence in sentences:
             print(f"\n  ▶️ 문장 분석 요청: \"{sentence}\"")
-            analysis_result = analysis_sentence_ingredients(sentence)
+            analysis_result = analysis_sentence_ingredients(sentence) # 단어별 문장 분석 진행
             print(type(analysis_result))
+
+            grouped_data = editpdf.grouping_data(analysis_result) # 서로 붙어있는 품사일 때에는 하나로 병합
+            print(grouped_data)
+            # 그룹화된 성분별 번역 진행
+            final_analysis_result = analyze_sentence_with_gemini(grouped_data, page_num, client)
+            print(final_analysis_result)
+            
             # analysis_result = analyze_sentence_with_gemini(sentence, page_num, client)
             # print(type(analysis_result))
             if analysis_result:
-                apply_highlights_to_page(current_page, analysis_result, page_highlight_rects, HIGHLIGHT_MAP)
+                editpdf.apply_highlights_to_page(current_page, grouped_data, page_highlight_rects, HIGHLIGHT_MAP)
             else:
                 print("  - 이 문장에 대한 분석 결과를 받지 못해 하이라이트를 건너뜁니다.")
 
