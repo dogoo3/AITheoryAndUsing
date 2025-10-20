@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 
 from geminiapi import analyze_sentence_with_gemini
 from editpdf import extract_sentences_from_page, apply_highlights_to_page
+from spacy_analyzer import analysis_sentence_ingredients
 
 load_dotenv()
 
@@ -19,30 +20,49 @@ END_PAGE = int(os.getenv("END_PAGE"))
 def parse_color(color_str):
     return tuple(map(float, color_str.split(',')))
 
-# 색상 및 하이라이트 맵 설정
+# 색상 및 하이라이트 맵 설정 (기본 성분 그룹, 품사 그룹, 동사 확장 그룹, 구조 단위 그룹, 수식어 그룹)
 HIGHLIGHT_MAP = {
-    "subject": {"color": parse_color(os.getenv("RED")), "desc_key": "subject_desc"},
-    "verb": {"color": parse_color(os.getenv("RED")), "desc_key": "verb_desc"},
-    "objective": {"color": parse_color(os.getenv("RED")), "desc_key": "objective_desc"},
-    "complement": {"color": parse_color(os.getenv("RED")), "desc_key": "complement_desc"},
-    "noun": {"color": parse_color(os.getenv("ORANGE")), "desc_key": "noun_desc"},
-    "adjective": {"color": parse_color(os.getenv("ORANGE")), "desc_key": "adjective_desc"},
-    "adverb": {"color": parse_color(os.getenv("ORANGE")), "desc_key": "adverb_desc"},
-    "article": {"color": parse_color(os.getenv("ORANGE")), "desc_key": "article_desc"},
-    "determiner": {"color": parse_color(os.getenv("ORANGE")), "desc_key": "determiner_desc"},
-    "preposition": {"color": parse_color(os.getenv("ORANGE")), "desc_key": "preposition_desc"},
-    "conjunction": {"color": parse_color(os.getenv("ORANGE")), "desc_key": "conjunction_desc"},
-    "interrogative": {"color": parse_color(os.getenv("ORANGE")), "desc_key": "interrogative_desc"},
-    "relative_pronoun": {"color": parse_color(os.getenv("ORANGE")), "desc_key": "relative_pronoun_desc"},
-    "modal": {"color": parse_color(os.getenv("YELLOW")), "desc_key": "modal_desc"},
-    "auxiliary": {"color": parse_color(os.getenv("YELLOW")), "desc_key": "auxiliary_desc"},
-    "gerund": {"color": parse_color(os.getenv("YELLOW")), "desc_key": "gerund_desc"},
-    "participle": {"color": parse_color(os.getenv("YELLOW")), "desc_key": "participle_desc"},
-    "infinitive": {"color": parse_color(os.getenv("YELLOW")), "desc_key": "infinitive_desc"},
-    "prepositional_phrase": {"color": parse_color(os.getenv("GREEN")), "desc_key": "prepositional_phrase_desc"},
-    "clause": {"color": parse_color(os.getenv("GREEN")), "desc_key": "clause_desc"},
-    "phrase": {"color": parse_color(os.getenv("GREEN")), "desc_key": "phrase_desc"},
-    "modifier": {"color": parse_color(os.getenv("SKY")), "desc_key": "modifier_desc"}
+    "NN": {"color": parse_color(os.getenv("RED")), "desc_key": "단수명사, "},
+    "NNS": {"color": parse_color(os.getenv("RED")), "desc_key": "복수명사, "},
+    "NNP": {"color": parse_color(os.getenv("RED")), "desc_key": "단수 고유명사, "},
+    "NNPS": {"color": parse_color(os.getenv("RED")), "desc_key": "복수 고유명사, "},
+    "PRP": {"color": parse_color(os.getenv("RED")), "desc_key": "인칭대명사, "},
+    "PRP$": {"color": parse_color(os.getenv("RED")), "desc_key": "소유대명사, "},
+    "WDT": {"color": parse_color(os.getenv("RED")), "desc_key": "의문명사, "},
+    "WP": {"color": parse_color(os.getenv("RED")), "desc_key": "의문대명사, "},
+
+    "MD": {"color": parse_color(os.getenv("ORANGE")), "desc_key": "조동사, "},
+    "VB": {"color": parse_color(os.getenv("ORANGE")), "desc_key": "동사, "},
+    "VBG": {"color": parse_color(os.getenv("ORANGE")), "desc_key": "동명사, "},
+    "VBD": {"color": parse_color(os.getenv("ORANGE")), "desc_key": "동사(과거완료), "},
+    "VBN": {"color": parse_color(os.getenv("ORANGE")), "desc_key": "과거분사, "},
+    "VBP": {"color": parse_color(os.getenv("ORANGE")), "desc_key": "동사(3인칭 단수가 아닌 현재시제), "},
+    "VBZ": {"color": parse_color(os.getenv("ORANGE")), "desc_key": "동사(3인칭 단수인 현재시제), "},
+    "TO": {"color": parse_color(os.getenv("ORANGE")), "desc_key": "to부정사, "},
+
+    "JJ": {"color": parse_color(os.getenv("YELLOW")), "desc_key": "형용사(원급), "},
+    "JJR": {"color": parse_color(os.getenv("YELLOW")), "desc_key": "형용사(비교급), "},
+    "JJS": {"color": parse_color(os.getenv("YELLOW")), "desc_key": "형용사(최상급), "},
+
+    "CC": {"color": parse_color(os.getenv("GREEN")), "desc_key": "등위 접속사, "},
+
+    "IN": {"color": parse_color(os.getenv("BLUE")), "desc_key": "전치사/종속접속사, "},
+    "RP": {"color": parse_color(os.getenv("BLUE")), "desc_key": "조사, "},
+    
+    "RB": {"color": parse_color(os.getenv("NAVY")), "desc_key": "부사(원급), "},
+    "RBR": {"color": parse_color(os.getenv("NAVY")), "desc_key": "부사(비교급), "},
+    "RBS": {"color": parse_color(os.getenv("NAVY")), "desc_key": "부사(최상급), "},
+    "WRB": {"color": parse_color(os.getenv("NAVY")), "desc_key": "의문부사, "},
+
+    "DT": {"color": parse_color(os.getenv("PURPLE")), "desc_key": "한정사, "},
+    "PDT": {"color": parse_color(os.getenv("PURPLE")), "desc_key": "전치한정사, "},
+
+    "CD": {"color": parse_color(os.getenv("SKY")), "desc_key": "숫자, "},
+    "EX": {"color": parse_color(os.getenv("SKY")), "desc_key": "존재 표현, "},
+    "FW": {"color": parse_color(os.getenv("SKY")), "desc_key": "외래어, "},
+    "LS": {"color": parse_color(os.getenv("SKY")), "desc_key": "나열 목록, "},
+    "POS": {"color": parse_color(os.getenv("SKY")), "desc_key": "소유격, "},
+    "UH": {"color": parse_color(os.getenv("SKY")), "desc_key": "감탄사, "}
 }
 
 def main():
@@ -86,8 +106,10 @@ def main():
 
         for sentence in sentences:
             print(f"\n  ▶️ 문장 분석 요청: \"{sentence}\"")
-            analysis_result = analyze_sentence_with_gemini(sentence, page_num, client)
-            
+            analysis_result = analysis_sentence_ingredients(sentence)
+            print(type(analysis_result))
+            # analysis_result = analyze_sentence_with_gemini(sentence, page_num, client)
+            # print(type(analysis_result))
             if analysis_result:
                 apply_highlights_to_page(current_page, analysis_result, page_highlight_rects, HIGHLIGHT_MAP)
             else:
