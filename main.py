@@ -1,5 +1,6 @@
 import os
 import fitz
+import ast
 from google import genai
 from dotenv import load_dotenv
 
@@ -113,13 +114,16 @@ def main():
             grouped_data = editpdf.grouping_data(analysis_result) # 서로 붙어있는 품사일 때에는 하나로 병합
             print(grouped_data)
             # 그룹화된 성분별 번역 진행
-            final_analysis_result = analyze_sentence_with_gemini(grouped_data, page_num, client)
-            print(final_analysis_result)
-            
+            translated_analysis_result = analyze_sentence_with_gemini(grouped_data, page_num, client)
+
+            # 번역된 것을 list type으로 변경함
+            list_translated_final = ast.literal_eval(translated_analysis_result)
+
             # analysis_result = analyze_sentence_with_gemini(sentence, page_num, client)
             # print(type(analysis_result))
+
             if analysis_result:
-                editpdf.apply_highlights_to_page(current_page, grouped_data, page_highlight_rects, HIGHLIGHT_MAP)
+                editpdf.apply_highlights_to_page(current_page, grouped_data, list_translated_final, page_highlight_rects, HIGHLIGHT_MAP)
             else:
                 print("  - 이 문장에 대한 분석 결과를 받지 못해 하이라이트를 건너뜁니다.")
 
